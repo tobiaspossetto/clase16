@@ -6,7 +6,7 @@ const {sqlite} = require('./config/sqlite')
 const knex1 = require('knex')(mariadb)
 const knex2 = require('knex')(sqlite)
 
-knex1.schema.createTable('products', (table) => {
+/* knex1.schema.createTable('products', (table) => {
     table.increments('id')
     table.string('title')
     table.string('thumbnail')
@@ -15,7 +15,7 @@ knex1.schema.createTable('products', (table) => {
 .then(() => console.log('tabla creada'))
 .catch((error) => console.error(error))
 .finally(() => knex1.destroy())
-
+ */
 knex2.schema.createTable('messages', (table) => {
     table.increments('id')
     table.string('email')

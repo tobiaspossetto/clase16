@@ -1,16 +1,21 @@
 const express = require('express');
 const morgan = require('morgan');
-const Controller = require('./controller');
+
 const { Server: HttpServer } = require("http");
 const { Server: IOServer } = require("socket.io");
 
 const app = express();
 const httpServer = new HttpServer(app);
 const io = new IOServer(httpServer);
-const {mariadb} = require('./config')
-const {sqlite} = require('./config')
-const knex = require("knex")(mariadb)
 
+const {mariadb} = require('./config/mariadb')
+const {sqlite} = require('./config/sqlite')
+
+
+const ControllerMsg = require('./controllers/msg')
+const ControllerProducts = require('./controllers/products')
+const msgController = new ControllerMsg(require('knex')(sqlite), 'messages')
+const prodController = new ControllerProducts(require('knex')(mariadb), 'products')
 //settings 
 app.set('port', process.env.PORT || 4000);
 app.use(morgan('dev'));
@@ -30,11 +35,9 @@ httpServer.listen(4000, function () {
 
 
 
-let productos = []
-
 const callMsg = async () => {
     try {
-        const mesagges = await Controller.getMessages()
+        const mesagges = await msgController.getMessages()
         console.log(mesagges)
         return mesagges
     } catch (error) {
@@ -48,12 +51,11 @@ callMsg()
 io.on('connection', async (socket) => {
     console.log('new connection')
     
-    socket.emit('PRODUCTS', productos)
-    socket.on('NEW_PRODUCT', (data) =>{
+    socket.emit('PRODUCTS', await prodController.getProducts())
+    socket.on('NEW_PRODUCT', async (data) =>{
        // console.log('llego nuevo prod')
-        productos.push(data)
-
-        io.sockets.emit('PRODUCTS', productos)
+       await prodController.saveProduct(data)
+        io.sockets.emit('PRODUCTS',  await prodController.getProducts())
     })
 
     
@@ -64,7 +66,7 @@ io.on('connection', async (socket) => {
     socket.on('NEW_MESSAGE', async (data) =>{
         //console.log(data)
         //console.log('llego nuevo mensaje')
-       await Controller.saveMessage(data)
+       await msgController.saveMessage(data)
       // const msg = await Controller.getMessages()
 
         io.sockets.emit('MESSAGES',await  callMsg())
@@ -72,65 +74,3 @@ io.on('connection', async (socket) => {
     
 })
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// const express = require('express');
-// const morgan = require('morgan');
-
-// const app = express();
-// const SocketIO = require('socket.io')
-
-
-
-
-// //settings 
-// app.set('port', process.env.PORT || 4000);
-// app.use(morgan('dev'));
-// app.use(express.urlencoded({ extended: true }));
-// app.use(express.json());
-
-// app.set('views', './src/views')
-// app.set('view engine', 'pug');
-// // Routes
-// app.use('/', require('./routes'))
-
-// //start
-// const server = app.listen(app.get('port'), () => {
-//     console.log(`Servidor iniciado en el puerto ${app.get('port')}`)
-// });
-
-// const socket = SocketIO(server)
-
-
-
-// let productos = [{title:'sdadas', price:12, thumbnail:1},{title:'sdadas', price:12, thumbnail:2},{title:'sdadas', price:12, thumbnail:3}]
-
-// //websockets 
-// socket.on('connection', (sock) => {
-//     console.log('new connection')
-    
-//     sock.emit('PRODUCTS', productos)
-//     sock.on('NEW_PRODUCT', (data) =>{
-//         console.log('llego nuevo prod')
-//         productos.push(data)
-
-//         sock.emit('PRODUCTS', productos)
-//     })
-
-    
-
-    
-// })
